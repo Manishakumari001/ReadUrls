@@ -1,56 +1,3 @@
-//package reader
-//
-//// reader.go
-//// Reads a CSV file line by line and streams URLs through a channel.
-//
-//import (
-//	"bufio"
-//	"os"
-//	"strings"
-//
-//	"github.com/rs/zerolog/log"
-//)
-//
-//// ReadCSVFile reads the input CSV file line-by-line (without loading all into memory).
-//// It sends valid URLs (with "https://" prefix added if missing) to the provided channel.
-//
-//func ReadCSVFile(csvPath string, urlChan chan<- string) {
-//	// Open the file
-//	// Skip the header
-//	// For each line: trim, sanitize, and send to channel
-//	// Close channel when done
-//	defer close(urlChan)
-//
-//	file, err := os.Open(csvPath)
-//	if err != nil {
-//		log.Error().Err(err).Msg("Failed to open CSV file")
-//		return
-//	}
-//	defer file.Close()
-//
-//	scanner := bufio.NewScanner(file)
-//	lineNum := 0
-//
-//	for scanner.Scan() {
-//		line := strings.TrimSpace(scanner.Text())
-//		lineNum++
-//		if lineNum == 1 {
-//			continue
-//		}
-//		if line == "" {
-//			continue
-//		}
-//		if !strings.HasPrefix(line, "http") {
-//			line = "https://" + line
-//		}
-//		urlChan <- line
-//	}
-//
-//	if err := scanner.Err(); err != nil {
-//		log.Error().Err(err).Msg("Error scanning CSV file")
-//	}
-//}
-
 package reader
 
 import (
@@ -59,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -67,6 +15,14 @@ import (
 // ReadCSV reads URLs line-by-line from a CSV file and sends them through urlChan.
 // It expects the first line to be a header. Logs an error if the file is empty or malformed.
 func ReadCSVFile(ctx context.Context, filePath string, urlChan chan<- string) error {
+	// Check file extension before doing anything else
+	if filepath.Ext(filePath) != ".csv" {
+		err := errors.New("invalid file extension: only .csv files are supported")
+		log.Error().Err(err).Str("file", filePath).Msg("Unsupported file type")
+		close(urlChan)
+		return err
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Error().Err(err).Str("file", filePath).Msg("Failed to open CSV file")
